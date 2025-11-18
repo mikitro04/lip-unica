@@ -23,12 +23,12 @@ let getloc st = st.firstloc
 
 let setenv st envstack =
   { envstack; memory = st.memory; firstloc = st.firstloc }
+  
+let setloc st firstloc =
+  { envstack = st.envstack; memory = st.memory; firstloc }
 
 let setmem st memory =
   { envstack = st.envstack; memory; firstloc = st.firstloc }
-
-let setloc st firstloc =
-  { envstack = st.envstack; memory = st.memory; firstloc }
 
 let topenv st =
   match st.envstack with
@@ -42,8 +42,8 @@ let popenv st =
 
 let make_state envstack memory firstloc = { envstack; memory; firstloc }
 
-let bind_env f x v y = if String.equal x y then v else f y
-let bind_mem f x v y = if Int.equal x y then v else f y
+let bind_env (f : env) (x : ide) (v : envval) (y : ide) = if String.equal x y then v else f y
+let bind_mem (f : mem) (x : loc) (v : memval) (y : loc) = if Int.equal x y then v else f y
 
 let bottom_env : env = fun x -> raise (UnboundVar x)
 let bottom_mem : mem = fun l -> raise (UnboundLoc l)
@@ -51,3 +51,15 @@ let bottom_mem : mem = fun l -> raise (UnboundLoc l)
 let state0 = make_state [bottom_env] bottom_mem 0
 
 type conf = St of state | Cmd of cmd * state
+
+(*-------------------------------------------------*)
+(*
+let bindvar (st : state) x v =
+    let env = topenv st in
+    match (env x, v) with
+    | IVar l, Int _ | BVar l, Bool _ ->
+        let mem' = bind_mem (getmem st) l v in
+        setmem st mem'
+    | IVar _, Bool _ -> raise (TypeError "Can't assign a bool to an int variable")
+    | BVar _, Int _ -> raise (TypeError "Can't assign an int to an bool variable")
+*)

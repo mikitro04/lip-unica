@@ -1,34 +1,6 @@
-open WhileLib.Ast
 open WhileLib.Types
 open WhileLib.Prettyprint       
 open WhileLib.Main
-
-(**********************************************************************
- parse test : (variable, term, expected result)
- **********************************************************************)
-
-let test_parse cmd exp_result =
-  cmd |> parse |> fun c -> c = exp_result
-
-let%test "test_parse1" = test_parse
-    "x:=0" (Assign("x",Const(0)))
-
-let%test "test_parse2" = test_parse
-    "x:=0; y:=x+1" (Seq(Assign("x",Const(0)),Assign("y",Add(Var("x"),Const(1)))))    
-
-let%test "test_parse3" = test_parse
-    "x:=0; if x=0 then y:=1 else y:=0" (Seq(Assign("x",Const(0)),If(Eq(Var("x"),Const(0)),Assign("y",Const(1)),Assign("y",Const(0)))))
-
-let%test "test_parse4" = test_parse
-    "x:=0; if x=0 then y:=1 else y:=0; x:=2" (Seq(Seq(Assign("x",Const(0)),If(Eq(Var("x"),Const(0)),Assign("y",Const(1)),Assign("y",Const(0)))),Assign("x",Const(2))))
-    
-let%test "test_parse5" = test_parse
-    "x:=3; while x<=0 do x:=x-1; y:=0" (Seq(Seq(Assign("x",Const(3)),While(Leq(Var "x",Const 0),Assign("x",Sub(Var "x",Const 1)))),Assign("y",Const(0))))
-
-
-(**********************************************************************
- trace test : (command, n_steps, variable, expected value after n_steps)
- **********************************************************************)
 
 let test_trace (cmd,n_steps,var,exp_val) =
   cmd
@@ -71,3 +43,52 @@ let%test "test_trace10" = test_trace
 
 let%test "test_trace11" = test_trace
     ("x:=2; y:=3; z:=1; if x<=y and x<=z then min:=x else (if y<=z then min:=y else min:=z)", 10, "min", Nat 1)
+
+
+
+
+
+(**********************************************************************
+ file test : leggi un programma da un file e testalo
+ **********************************************************************)
+
+(* Funzione di utility per leggere il contenuto di un file in una stringa *)
+let read_file filename =
+  let ch = open_in filename in
+  let s = really_input_string ch (in_channel_length ch) in
+  close_in ch;
+  s
+
+(* La funzione di test vera e propria *)
+let test_file (filename, n_steps, var, exp_val) =
+  (* Leggi il contenuto del file 'filename' *)
+  let cmd = read_file filename in
+  
+  (* Il resto della logica è identico alla tua funzione test_trace *)
+  cmd
+  |> parse
+  |> fun c -> last (trace n_steps c)
+  |> fun t -> match t with
+    St s -> s var = exp_val
+  | Cmd(_,s) -> s var = exp_val
+
+(* Il nostro nuovo test che usa il file 'min' *)
+let%test "test_trace12_from_file" = test_file
+    ("min", 20, "min", Nat 1)
+
+let%test "test_trace13_from_file" = test_file
+    ("min2", 20, "min", Nat 1)
+
+let%test "test_trace14_from_file" = test_file
+    ("fib", 100, "a", Nat 13)
+
+let%test "test_trace15_from_file" = test_file
+    ("fact", 100, "f", Nat 120)
+
+let%test "test_trace16_from_file" = test_file
+    ("euclid", 100, "a", Nat 12)
+
+(* Dentro ogni test che legge da file abbiamo il nome del file, quanti passi di esecuzione deve fare, 
+la variabile del file di cui controllare il valore e il valore aspettato *)
+
+    
