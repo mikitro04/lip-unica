@@ -126,7 +126,7 @@ let rec trace1 (ev : conf) : conf =
                 | St st' -> Cmd(c2, st')
                 | Cmd (c1', st') -> Cmd (Seq (c1', c2), st'))
 
-            | If (e, t, f) ->(
+            | If (e, t, f) -> (
                 let e' = eval_expr st e in
                 match e' with
                 | Bool true -> Cmd (t, st)
