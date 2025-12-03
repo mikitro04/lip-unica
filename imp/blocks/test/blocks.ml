@@ -84,3 +84,57 @@ let%test "test_trace12" = test_trace
 
 let%test "test_trace13" = test_trace
     ("{ int y; { int x; x:=20; y:=x }; { int x; x:=30; y:=x+y+1 } }", 10, 0, Int 51)
+
+
+
+
+
+let read_file fname =
+  let ic = open_in fname in
+  let buf = Buffer.create 1024 in
+  try
+    while true do
+      Buffer.add_string buf (input_line ic);
+      Buffer.add_char buf '\n'
+    done;
+    assert false
+  with End_of_file ->
+    close_in ic;
+    Buffer.contents buf
+
+
+let%test "min runs" =
+  let prog = read_file "min" in
+  let c = parse prog in
+  try
+    ignore (trace 200 c);
+    true
+  with _ -> false
+
+let%test "gcd euclid full check" =
+  let prog_text = read_file "euclid" in
+  let cmd = parse prog_text in
+  let final_conf = List.rev (trace 1000 cmd) |> List.hd in
+  let final_state =
+    match final_conf with
+    | St s -> s
+    | Cmd (_, s) -> s
+  in
+  match getmem final_state 0, getmem final_state 1, getmem final_state 2 with
+  | Int g, Int a, Int b -> g = 12 && a = 12 && b = 12
+  | _ -> false
+
+
+let%test "nesting2 file" =
+  let prog_text = read_file "nesting2" in
+  let cmd = parse prog_text in
+  let final_conf = List.rev (trace 1000 cmd) |> List.hd in
+  let final_state =
+    match final_conf with
+    | St s -> s
+    | Cmd (_, s) -> s
+  in
+  (* locazioni: z=0, y=1, x=2 (variabili dichiarate nell'ordine top-level) *)
+  match getmem final_state 0, getmem final_state 1, getmem final_state 2 with
+  | Int z, Int y, Int x -> z = 51 && y = 42 && x = 50
+  | _ -> false

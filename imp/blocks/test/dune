@@ -1,5 +1,6 @@
 (library
  (name blocksTest)
- (inline_tests)
  (preprocess (pps ppx_inline_test))
- (libraries blocksLib))
+ (libraries blocksLib)
+ (inline_tests
+  (deps min euclid nesting2)))
