@@ -105,21 +105,21 @@ var x;     --> newloc()
 
 
 let rec eval_decl (st : state) (dl : decl list) : state =
-  let en = topenv st in
-  let tailEnv = popenv st in            (*Rimuovo il primo Ambiente nella pila altrimenti lo passo doppio*)
+    let en = topenv st in
+    let tailEnv = popenv st in            (*Rimuovo il primo Ambiente nella pila altrimenti lo passo doppio*)
 
-  match dl with
-  | [] -> st
-  | h :: t -> (
-    let new_env = (
-      match h with
-      | IntVar h' -> bind_env en h' (IVar (getloc st))      (*prende il nuovo ide assegnato a una loc (getloc) del suo tipo*)
-      | BoolVar h' -> bind_env en h' (BVar (getloc st))     (*Stessa cosa con le variabili di tipo Bool*)
-    ) in
-    
-    let new_state = make_state (new_env :: tailEnv) (getmem st) ((getloc st) + 1) in (*Creo un nuovo stato che contiene il topstate aggiornato piu' il resto degli ambienti della lista; Memoria invariata e la locazione di memoria uamenta di 1*)
-    eval_decl new_state t           (*Richiamo la stessa funzione ricorsivamente con il resto delle dichiarazioni da controllare*)
-  )
+    match dl with
+    | [] -> st
+    | h :: t -> (
+        let new_env = (
+            match h with
+            | IntVar h' -> bind_env en h' (IVar (getloc st))      (*prende il nuovo ide assegnato a una loc (getloc) del suo tipo*)
+            | BoolVar h' -> bind_env en h' (BVar (getloc st))     (*Stessa cosa con le variabili di tipo Bool*)
+        ) in
+
+        let new_state = make_state (new_env :: tailEnv) (getmem st) ((getloc st) + 1) in (*Creo un nuovo stato che contiene il topstate aggiornato piu' il resto degli ambienti della lista; Memoria invariata e la locazione di memoria uamenta di 1*)
+        eval_decl new_state t           (*Richiamo la stessa funzione ricorsivamente con il resto delle dichiarazioni da controllare*)
+    )
 ;;
 
 let rec trace1 (ev : conf) : conf =
@@ -148,10 +148,12 @@ let rec trace1 (ev : conf) : conf =
                 | Bool false -> St st
                 | Bool true -> Cmd (Seq (c1, While (e, c1)), st)
                 | _ -> raise (TypeError "While"))
-            | Decl (dl, c1) -> (
-                trace1 (Cmd (c1, (eval_decl st dl))))
-            | Block c1 -> (
-                trace1 (Cmd (c1, (make_state ))))
-            | _ -> failwith("okokokokokokokokoko")
+            | Decl (dl, c1) -> (Cmd (Block(c1), (eval_decl st dl)))
+            | Block (command) -> (
+                match trace1 @@ Cmd (command, st) with
+                | St st -> St (setenv st (popenv st))
+                | Cmd(c', st') -> Cmd(Block c', st')
+            )
         )
 ;;
+
