@@ -14,54 +14,64 @@ let rec eval_expr (st : state) (e : expr) : memval =
 match e with 
   
   | True -> Bool true
+  
   | False -> Bool false
+  
   | Var x -> (
     match (topenv st) x with
     | BVar l | IVar l -> (getmem st) l
   )
+  
   | Const n -> Int n
+
   | Not b -> (
     match eval_expr st b with
     | Bool b1 -> Bool (not b1)
     | _ -> raise(TypeError "Not")
-  )  
+  )
+  
   | And(e1, e2) -> (
     match eval_expr st e1, eval_expr st e2 with
     | Bool b1, Bool b2 -> Bool (b1 && b2)
     | _ -> raise(TypeError "And")
-  )  
+  )
+  
   | Or(e1, e2) -> (
     match eval_expr st e1, eval_expr st e2 with
     | Bool b1, Bool b2 -> Bool (b1 || b2)
     | _ -> raise(TypeError "Or")
   )
+
   | Add(e1, e2) -> (
     match eval_expr st e1, eval_expr st e2 with
     | Int n1, Int n2 -> Int (n1 + n2)
     | _ -> raise(TypeError "Add")
   )
+
   | Sub(e1, e2) -> (
     match eval_expr st e1, eval_expr st e2 with
     | Int n1, Int n2 -> Int (n1 - n2)
     | _ -> raise(TypeError "Sub")
   )
+
   | Mul(e1, e2) -> (
     match eval_expr st e1, eval_expr st e2 with
     | Int n1, Int n2 -> Int (n1 * n2)
     | _ -> raise(TypeError "Mul")
   )
+
   | Eq(e1, e2) -> (
     match eval_expr st e1, eval_expr st e2 with
     | Int n1, Int n2 -> Bool (n1 = n2)
     | _ -> raise(TypeError "Eq")
   )
+
   | Leq(e1, e2) -> (
     match eval_expr st e1, eval_expr st e2 with
     | Int n1, Int n2 -> Bool (n1 <= n2)
     | _ -> raise(TypeError "Leq")
   )
 ;;
-
 
 
 (******************************************************************************)
@@ -98,28 +108,26 @@ let bindvar (st : state) (x : ide) (v : memval) : state =
     | IVar _, Bool _ | BVar _, Int _ -> raise(TypeError "Non puoi assegnare Bool a Int o viceversa")
 ;;
 
-
 (*
 var x;     --> newloc()
 *)
 
-
-let rec eval_decl (st : state) (dl : decl list) : state =
-    let en = topenv st in
-    let tailEnv = popenv st in            (*Rimuovo il primo Ambiente nella pila altrimenti lo passo doppio*)
-
+let rec eval_decl_rec (en : env) (dl : decl list) (i : loc) : (env * loc) =
     match dl with
-    | [] -> st
+    | [] -> (en, i)
     | h :: t -> (
-        let new_env = (
+        let en' = (
             match h with
-            | IntVar h' -> bind_env en h' (IVar (getloc st))      (*prende il nuovo ide assegnato a una loc (getloc) del suo tipo*)
-            | BoolVar h' -> bind_env en h' (BVar (getloc st))     (*Stessa cosa con le variabili di tipo Bool*)
-        ) in
-
-        let new_state = make_state (new_env :: tailEnv) (getmem st) ((getloc st) + 1) in (*Creo un nuovo stato che contiene il topstate aggiornato piu' il resto degli ambienti della lista; Memoria invariata e la locazione di memoria uamenta di 1*)
-        eval_decl new_state t           (*Richiamo la stessa funzione ricorsivamente con il resto delle dichiarazioni da controllare*)
+            | IntVar x -> bind_env en x (IVar i)
+            | BoolVar x -> bind_env en x (BVar i))
+        in
+        eval_decl_rec en' t (i+1)
     )
+;;
+
+let eval_decl (st : state) (dl : decl list) : state =
+    let (en', i) = eval_decl_rec (topenv st) dl (getloc st) in
+    make_state (en' :: (getenv st)) (getmem st) i
 ;;
 
 let rec trace1 (ev : conf) : conf =
@@ -148,12 +156,26 @@ let rec trace1 (ev : conf) : conf =
                 | Bool false -> St st
                 | Bool true -> Cmd (Seq (c1, While (e, c1)), st)
                 | _ -> raise (TypeError "While"))
-            | Decl (dl, c1) -> (Cmd (Block(c1), (eval_decl st dl)))
+            | Decl (dl, c1) -> Cmd(Block(c1), eval_decl st dl)
             | Block (command) -> (
-                match trace1 @@ Cmd (command, st) with
-                | St st -> St (setenv st (popenv st))
-                | Cmd(c', st') -> Cmd(Block c', st')
+                match trace1 (Cmd(command, st)) with
+                | St st' -> St (setenv st' (popenv st'))
+                | Cmd(c', st') -> Cmd(Block(c'), st')
             )
         )
 ;;
 
+let rec trace_rec n t =
+  if n<=0 then [t]
+  else try
+      let t' = trace1 t
+      in t::(trace_rec (n-1) t')
+    with NoRuleApplies -> [t]
+
+(**********************************************************************
+ trace : int -> cmd -> conf list
+
+ Usage: trace n t performs n steps of the small-step semantics
+ **********************************************************************)
+
+let trace n t = trace_rec n (Cmd(t,state0))
