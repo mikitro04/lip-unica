@@ -13,10 +13,10 @@ type expr =
   | Mul of expr * expr
   | Eq of expr * expr
   | Leq of expr * expr
-  | Call of ide * expr     
+  | Call of ide * expr
   | CallExec of cmd * expr (* Runtime only: c is the cmd being reduced, e is the return expr *)
   | CallRet of expr        (* Runtime only: e is the return expr *)
-              
+
 and cmd =
   | Skip
   | Assign of string * expr
@@ -27,7 +27,7 @@ and cmd =
 type decl =
   | EmptyDecl
   | IntVar of ide 
-  | Fun of ide * ide * cmd * expr
+  | Fun of ide * ide * cmd * expr   (* name, paramether, corpse, return expression *)
   | DSeq of decl * decl
 
 type prog = Prog of decl * cmd

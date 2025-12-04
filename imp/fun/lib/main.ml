@@ -13,3 +13,14 @@ let parse (s : string) : prog =
 (******************************************************************************)
 (*                      Small-step semantics of expressions                   *)
 (******************************************************************************)
+
+exception TypeError of string
+exception UnboundVar of string
+exception PredOfZero
+exception NoRuleApplies
+
+let botenv = fun x -> failwith ("variable " ^ x ^ " unbound")
+let botmem = fun l -> failwith ("location " ^ string_of_int l ^ " undefined")
+    
+let bind f x v = fun y -> if y=x then v else f y
+
